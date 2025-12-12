@@ -48,6 +48,17 @@ require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 register_activation_hook( __FILE__, 'lw_registration_active_plugin');
 register_deactivation_hook( __FILE__, 'lw_registration_deactive_plugin' );
 
+// One-time migration: wipe existing pronoun data upon deployment
+add_action('plugins_loaded','lw_registration_wipe_pronouns_once');
+function lw_registration_wipe_pronouns_once(){
+	if (get_option('lw_pronouns_wipe_done') === 'yes') {
+		return;
+	}
+	global $wpdb;
+	$wpdb->query("DELETE FROM {$wpdb->usermeta} WHERE meta_key='lw_registration_pronouns'");
+	update_option('lw_pronouns_wipe_done','yes');
+}
+
 
 function lw_registration_deactive_plugin(){
 	$lwAdminUsers = new lwAdminUsers();

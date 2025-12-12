@@ -34,7 +34,14 @@ $lw_general_settings = get_option('lw_general_settings');
                   </div>
                  <div class="lw-form-group">
                      <label>Your Pronouns <div class="lw-tooltip">?<span class="lw-tooltiptext">Pronouns are what we use to refer to a person other than their name, such as They, She and He. Feel free to share your pronouns here</span></div></label>
-                     <input type="text" placeholder="Your Pronouns"  name="lw_registration_pronouns" maxlength="100">
+                     <select name="lw_registration_pronouns[]" class="lw-pronouns-select" multiple data-placeholder="Your Pronouns">
+                        <option value="She">She</option>
+                        <option value="Her">Her</option>
+                        <option value="He">He</option>
+                        <option value="Him">Him</option>
+                        <option value="They">They</option>
+                        <option value="Them">Them</option>
+                     </select>
                </div>
                	 <div class="lw-form-group">
                         <label>Your Birthday<span class="lw_required_label">*</span><div class="lw-tooltip">?<span class="lw-tooltiptext">Birthday is required</span></div></label>

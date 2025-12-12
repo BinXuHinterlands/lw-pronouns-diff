@@ -283,22 +283,43 @@ function lw_get_client_ip() {
 
 add_action( 'xprofile_updated_profile', 'lw_profile_sync_wp_profile', 1000, 5 );
 
+function lw_append_pronouns_to_displayname($display_name, $user_id){
+    return $display_name;
+}
+
 function lw_profile_sync_wp_profile( $user_id, $posted_field_ids, $errors, $old_values, $new_values ) {
 	$nickname_id  = bp_xprofile_nickname_field_id();
 	global $current_user;
-	if(isset($_REQUEST['page']) && $_REQUEST['page']=="bp-profile-edit"){
 
-	}else{
-		foreach ( $new_values as $field_id => $new_value ) {
-			if ( $field_id == $nickname_id ) {
-						bp_update_user_meta( $user_id, 'nickname', $current_user->user_login );
-			}
-
-			if ( $field_id==21 ) {
-						update_user_meta( $user_id, 'lw_registration_pronouns', $new_value['value']);
-
-			}
-		}
+	foreach ( $new_values as $field_id => $new_value ) {
+	    if ( $field_id == $nickname_id ) {
+	        // Use the BuddyPress nickname field value for the edited user, not the current logged-in user
+	        $nick = '';
+	        if ( is_array( $new_value ) && isset( $new_value['value'] ) ) {
+	            $nick = $new_value['value'];
+	        } else {
+	            $nick = $new_value;
+	        }
+	        if ( is_array( $nick ) ) { $nick = reset( $nick ); }
+	        $nick = sanitize_text_field( (string) $nick );
+	        if ( $nick !== '' ) {
+	            bp_update_user_meta( $user_id, 'nickname', $nick );
+	        }
+	    }
+	
+	    $pronouns_field_id = function_exists('xprofile_get_field_id_from_name') ? xprofile_get_field_id_from_name('Pronouns') : 0;
+	    $pronouns_field_id = (int) $pronouns_field_id;
+	
+	    if ( !empty($pronouns_field_id) && (int)$field_id === $pronouns_field_id ) {
+	        $raw = isset($new_value['value']) ? $new_value['value'] : '';
+	        $tokens = is_array($raw) ? $raw : preg_split('/[\s,;\/]+/', strtolower(trim((string)$raw)));
+	        $tokens = array_map('strtolower', $tokens);
+	        $allowed = array('she','her','he','him','they','them');
+	        $tokens = array_values(array_unique(array_filter($tokens, function($t) use ($allowed){ return in_array($t, $allowed, true); })));
+	        $tokens = array_slice($tokens, 0, 2);
+	        $normalized = implode('/', array_map(function($t){ return ucfirst($t); }, $tokens));
+	        update_user_meta( $user_id, 'lw_registration_pronouns', $normalized );
+	    }
 	}
 }
 function update_user_birthday($user_id,$birthday){
