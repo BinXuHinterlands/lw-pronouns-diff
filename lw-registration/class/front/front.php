@@ -74,7 +74,38 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 				wp_enqueue_style( 'LW-style.css',LW_REGISTRATION_URL.'/assets/css/LW-style.css',array(),strval(filemtime(plugin_dir_path(__FILE__).'../../assets/css/LW-style.css')));
 			
 				wp_enqueue_script( 'lw_registration_jquery.validate.min', LW_REGISTRATION_ASSETS_URL . '/js/jquery.validate.min.js',array(),time());
-				wp_enqueue_script( 'lw_registration-js', LW_REGISTRATION_ASSETS_URL . '/js/lw_registration.js',array(),strval(filemtime(plugin_dir_path(__FILE__).'../../assets/js/lw_registration.js')),true);
+				wp_enqueue_script( 'lw_registration-js', LW_REGISTRATION_ASSETS_URL . '/js/lw_registration.js',array('jquery','select2'),strval(filemtime(plugin_dir_path(__FILE__).'../../assets/js/lw_registration.js')),true);
+                // Enqueue Select2 for pronoun multi-select on registration pages
+                // Use local Select2 assets from child theme if available, otherwise fall back to parent theme vendors
+                $child_select2_css_nonmin = get_stylesheet_directory() . '/assets/css/select2.css';
+                $child_select2_css_min    = get_stylesheet_directory() . '/assets/css/select2.min.css';
+                $child_select2_js_nonmin  = get_stylesheet_directory() . '/assets/js/select2.js';
+                $child_select2_js_min     = get_stylesheet_directory() . '/assets/js/select2.min.js';
+                $select2_css_url = file_exists($child_select2_css_nonmin) ? get_stylesheet_directory_uri() . '/assets/css/select2.css'
+                                    : (file_exists($child_select2_css_min) ? get_stylesheet_directory_uri() . '/assets/css/select2.min.css'
+                                    : get_template_directory_uri() . '/assets/css/vendors/select2.min.css');
+                $select2_js_url  = file_exists($child_select2_js_nonmin) ? get_stylesheet_directory_uri() . '/assets/js/select2.js'
+                                    : (file_exists($child_select2_js_min) ? get_stylesheet_directory_uri() . '/assets/js/select2.min.js'
+                                    : get_template_directory_uri() . '/assets/js/vendors/select2.full.min.js');
+                // Compute absolute paths and dynamic versions to bust cache
+                $select2_css_path = file_exists( $child_select2_css_nonmin ) ? $child_select2_css_nonmin
+                                    : ( file_exists( $child_select2_css_min ) ? $child_select2_css_min
+                                    : get_template_directory() . '/assets/css/vendors/select2.min.css' );
+                $select2_js_path  = file_exists( $child_select2_js_nonmin ) ? $child_select2_js_nonmin
+                                    : ( file_exists( $child_select2_js_min ) ? $child_select2_js_min
+                                    : get_template_directory() . '/assets/js/vendors/select2.full.min.js' );
+                $select2_css_version = file_exists( $select2_css_path ) ? filemtime( $select2_css_path ) : time();
+                $select2_js_version  = file_exists( $select2_js_path ) ? filemtime( $select2_js_path ) : time();
+                wp_register_style( 'select2css', $select2_css_url, array(), strval( $select2_css_version ), 'all' );
+                wp_register_script( 'select2', $select2_js_url, array( 'jquery' ), strval( $select2_js_version ), true );
+                wp_enqueue_style( 'select2css' );
+                wp_enqueue_script( 'select2' );
+
+                // Enqueue child theme pronoun enhancement script on registration-related pages
+                $child_profile_edit_js_path = get_stylesheet_directory() . '/js/profile-edit.js';
+                $child_profile_edit_js_ver  = file_exists( $child_profile_edit_js_path ) ? filemtime( $child_profile_edit_js_path ) : time();
+                wp_enqueue_script( 'buddyboss-child-profile-edit', get_stylesheet_directory_uri() . '/js/profile-edit.js', array( 'jquery', 'select2' ), strval( $child_profile_edit_js_ver ), true );
+
                 if($pageId==$lw_general_settings['registration'] || $pageId==$lw_general_settings['direct_starlight_registration']){
                     $site_key = get_option('recaptcha_site_key');
                     if (!empty($site_key)) {
@@ -259,6 +290,30 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 					$cc_email_address[$lw_general_settings['cc_cmail_recipient']] = $lw_general_settings['cc_cmail_recipient'];
 				}
 				$birthday_string = $postData['lw_birthday_month'].$postData['lw_birthday_day'];
+				// Pronoun normalization and enforcement: allow up to two unique selections from predefined list
+				$pronouns_allowed = array('she','her','he','him','they','them');
+				$pronouns_input = isset($postData['lw_registration_pronouns']) ? $postData['lw_registration_pronouns'] : array();
+				if (!is_array($pronouns_input)) {
+					$pronouns_input = $pronouns_input !== '' ? array($pronouns_input) : array();
+				}
+				$pronouns_normalized = array();
+				foreach($pronouns_input as $p){
+					$p_l = strtolower(trim($p));
+					if (in_array($p_l, $pronouns_allowed) && !in_array($p_l, $pronouns_normalized)) {
+						$pronouns_normalized[] = $p_l;
+					}
+				}
+				if (count($pronouns_normalized) > 2) {
+					echo json_encode(array("message"=>"Please select up to two pronouns only.",'status'=>0));
+					exit;
+				}
+				$pronouns_value = '';
+				if (count($pronouns_normalized) > 0) {
+					$pronouns_value = ucfirst($pronouns_normalized[0]);
+					if (count($pronouns_normalized) == 2) {
+						$pronouns_value .= '/' . ucfirst($pronouns_normalized[1]);
+					}
+				}
 				if($lw_form_type=="form_a"){
 					$redirect= get_the_permalink($lw_general_settings['redirect_registration_known_to_starlight']);
 					if(!empty($postData['lw_registration_guardian_email'])){
@@ -273,10 +328,10 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 					$updatedMetaData = array(
 											'lw_invitation_id'=>$postData['lw_invitation_id'],
 											'lw_form_type'=>$postData['lw_form_type'],
-											'lw_registration_pronouns'=>$postData['lw_registration_pronouns'],
+											'lw_registration_pronouns'=>$pronouns_value,
 											'lw_registration_birthday'=>$postData['lw_birthday_year']."-".$postData['lw_birthday_month']."-".$postData['lw_birthday_day'],
 											
-											'lw_area_code'=>$postData['lw_area_code'], 	
+											'lw_area_code'=>$postData['lw_area_code'], 
 											'lw_emergency_area_code'=>$postData['lw_emergency_area_code'],
 											'lw_state'=>$postData['lw_state'], // New field
 											'lw_mobilephone'=>str_replace('0', '', substr($postData['lw_mobilephone'], 0, 1)).substr($postData['lw_mobilephone'], 1),
@@ -302,7 +357,7 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 					$display_name = $postData['lw_first_name'].' '.$postData['lw_last_name'];
 					$updatedMetaData = array(
 											'lw_form_type'=>$postData['lw_form_type'],
-											'lw_registration_pronouns'=>$postData['lw_registration_pronouns'],
+											'lw_registration_pronouns'=>$pronouns_value,
 											'lw_registration_birthday'=>$postData['lw_birthday_year'].'-'.$postData['lw_birthday_month'].'-'.$postData['lw_birthday_day'],
 											'lw_referral_source'=>$postData['lw_referral_source'], // New field
 											'lw_state'=>$postData['lw_state'], // New field
@@ -313,9 +368,9 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 											'lw_registration_guardian_last_name'=>$postData['lw_registration_guardian_last_name'],
 											'lw_registration_guardian_email'=>$postData['lw_registration_guardian_email'],
 											'lw_registration_guardian_mobile_phone'=>str_replace('0', '', substr($postData['lw_registration_guardian_mobile_phone'], 0, 1)).substr($postData['lw_registration_guardian_mobile_phone'], 1),
-											'lw_contact_you'=>$postData['lw_contact_you'],
-											'lw_registration_source'=>'direct' // Source tracking
+											'lw_contact_you'=>$postData['lw_contact_you']
 					);
+						
 				}
 				
 				if($lw_form_type=="form_b"){
@@ -326,7 +381,7 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 					$last_name = $postData['lw_last_name'];
 					$display_name = $postData['lw_first_name'].' '.$postData['lw_last_name'];
 					$updatedMetaData = array('lw_form_type'=>$postData['lw_form_type'],
-											'lw_registration_pronouns'=>$postData['lw_registration_pronouns'],
+											'lw_registration_pronouns'=>$pronouns_value,
 											'lw_registration_birthday'=>$postData['lw_birthday_year']."-".$postData['lw_birthday_month']."-".$postData['lw_birthday_day'],
 											'lw_state'=>$postData['lw_state'] // New field
 					);
@@ -346,7 +401,7 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 					$last_name = $postData['lw_last_name'];
 					$display_name = $postData['lw_first_name'].' '.$postData['lw_last_name'];
 					$updatedMetaData = array('lw_form_type'=>$postData['lw_form_type'],
-											'lw_registration_pronouns'=>$postData['lw_registration_pronouns'],
+											'lw_registration_pronouns'=>$pronouns_value,
 											'lw_registration_birthday'=>$postData['lw_birthday_year']."-".$postData['lw_birthday_month']."-".$postData['lw_birthday_day'],
 											'lw_sibling_spent_time'=>$postData['lw_sibling_spent_time'],
 											'lw_area_code'=>$postData['lw_area_code'],
@@ -361,6 +416,11 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 					);
 					
 			}
+
+				if ( empty($user_login) || empty($postData['lw_password']) || empty($user_email) || empty($first_name) || empty($last_name) || !is_email($user_email) ) {
+					echo json_encode(array("message"=>"Required fields missing or invalid. Please fill in Username, Password, Email, First Name and Last Name.","status"=>0));
+					exit;
+				}
 		
 				$checkUsername = get_user_by("login",$user_login);
 				
@@ -441,6 +501,13 @@ if (!class_exists('LW_REGISTRATION_FRONT_CLASS')) {
 					foreach($updatedMetaData as $k=>$v){
 						update_user_meta($user_id,$k,$v);
 						
+					}
+					// 同步到 Extended Profile 的 Pronouns 字段，保持两处一致
+					if (function_exists('xprofile_set_field_data')) {
+					    $pronouns_field_id = function_exists('xprofile_get_field_id_from_name') ? xprofile_get_field_id_from_name('Pronouns') : 0;
+					    if (!empty($pronouns_field_id) && !empty($pronouns_value)) {
+					        xprofile_set_field_data($pronouns_field_id, $user_id, $pronouns_value);
+					    }
 					}
 					update_user_meta($user_id,'nickname',$user_login);
 					update_user_meta($user_id, 'birthmmdd' . $birthday_string, $birthday_string);

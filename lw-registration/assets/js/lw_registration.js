@@ -252,6 +252,20 @@ jQuery(document).on("click", ".lw_action_link", function () {
 });
 jQuery(document).ready(function () {
   jQuery(".lw-checkbox-custome-tc a").attr("target", "_blank");
+  if (jQuery.fn && jQuery.fn.select2) {
+    var $pronounSelects = jQuery(".lw-pronouns-select");
+    $pronounSelects.each(function () {
+      var $sel = jQuery(this);
+      var placeholder = $sel.attr("data-placeholder") || "Your Pronouns";
+      $sel.select2({
+        placeholder: placeholder,
+        allowClear: true,
+        maximumSelectionLength: 2,
+        maximumSelectionSize: 2,
+        width: "100%",
+      });
+    });
+  }
   jQuery.validator.addMethod(
     "username_valid",
     function (value, element) {
@@ -567,6 +581,11 @@ function lw_check_email_address(tab) {
 }
 function lw_ajax_request(form_id, token) {
   if (jQuery("#" + form_id).valid()) {
+    var pronounVals = jQuery("#" + form_id + " .lw-pronouns-select").val() || [];
+    if (pronounVals.length > 2) {
+      LW_show_loader_output("Please select up to two pronouns only.", 0);
+      return;
+    }
     //formData.append('')
     LW_show_loader();
     var formData = new FormData(jQuery("#" + form_id)[0]);

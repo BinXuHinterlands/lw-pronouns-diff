@@ -32,9 +32,23 @@ if (!class_exists('LW_REGISTRATION_ADMIN_CLASS')) {
 		public function lw_registration_profile_fields($user) {
 			include(LW_REGISTRATION_CLASS.'/admin/user_info.php');
 		}
+		
+		private function normalize_pronouns_input($input) {
+			$allowed = array('she','her','he','him','they','them');
+			if (is_array($input)) {
+				$vals = array_map('strtolower', $input);
+			} else {
+				$vals = preg_split('/[\s,;\/]+/', strtolower(trim((string)$input)));
+			}
+			$vals = array_filter($vals, function($v) use ($allowed) { return in_array($v, $allowed, true); });
+			$vals = array_values(array_unique($vals));
+			$vals = array_slice($vals, 0, 2);
+			$vals = array_map(function($v){ return ucfirst($v); }, $vals);
+			return implode('/', $vals);
+		}
+
 		public function lw_profile_fields_callback($user_id){
 			global $wpdb;
-			//indian codes to update user meta
 			$updatedMetaData = array(
 				'lw_referral_source' => $_POST['lw_referral_source'],
 				'lw_state' => $_POST['lw_state']
@@ -46,28 +60,47 @@ if (!class_exists('LW_REGISTRATION_ADMIN_CLASS')) {
 					
 					$updatedMetaData = array_merge($updatedMetaData, 
 						array(
-											'lw_form_type'=>$_POST['lw_form_type'],
-											'lw_registration_birthday'=>$_POST['form_a_lw_registration_birthday'],
-											'lw_registration_pronouns'=>$_POST['form_a_lw_registration_pronouns'],
-											'lw_area_code'=>$_POST['form_a_lw_area_code'],
-											'lw_mobilephone'=>$_POST['form_a_lw_mobilephone'],
-											'lw_emergency_area_code'=>$_POST['lw_emergency_area_code'],
-											'lw_registration_guardian_first_name'=>$_POST['form_a_lw_registration_guardian_first_name'],
-											'lw_registration_guardian_last_name'=>$_POST['form_a_lw_registration_guardian_last_name'],
-											'lw_registration_guardian_email'=>$_POST['form_a_lw_registration_guardian_email'],
-											'lw_registration_guardian_mobile_phone'=>$_POST['form_a_lw_registration_guardian_mobile_phone'],
-											'lw_contact_you'=>$_POST['form_a_lw_contact_you']
-					));
+												'lw_form_type'=>$_POST['lw_form_type'],
+												'lw_registration_birthday'=>$_POST['form_a_lw_registration_birthday'],
+												'lw_registration_pronouns'=>$this->normalize_pronouns_input(isset($_POST['form_a_lw_registration_pronouns'])?$_POST['form_a_lw_registration_pronouns']:''),
+												'lw_area_code'=>$_POST['form_a_lw_area_code'],
+												'lw_mobilephone'=>$_POST['form_a_lw_mobilephone'],
+												'lw_emergency_area_code'=>$_POST['lw_emergency_area_code'],
+												'lw_registration_guardian_first_name'=>$_POST['form_a_lw_registration_guardian_first_name'],
+												'lw_registration_guardian_last_name'=>$_POST['form_a_lw_registration_guardian_last_name'],
+												'lw_registration_guardian_email'=>$_POST['form_a_lw_registration_guardian_email'],
+												'lw_registration_guardian_mobile_phone'=>$_POST['form_a_lw_registration_guardian_mobile_phone'],
+												'lw_contact_you'=>$_POST['form_a_lw_contact_you']
+						));
 						
+				}
+				
+				if($lw_form_type=="form_a_direct"){
+				    $today_birtday = $_POST['form_a_lw_registration_birthday'];
+				    $updatedMetaData = array_merge($updatedMetaData, 
+				        array(
+				            'lw_form_type'=>$_POST['lw_form_type'],
+				            'lw_registration_birthday'=>$_POST['form_a_lw_registration_birthday'],
+				            'lw_registration_pronouns'=>$this->normalize_pronouns_input(isset($_POST['form_a_lw_registration_pronouns'])?$_POST['form_a_lw_registration_pronouns']:''),
+				            'lw_area_code'=>$_POST['form_a_lw_area_code'],
+				            'lw_mobilephone'=>$_POST['form_a_lw_mobilephone'],
+				            'lw_emergency_area_code'=>$_POST['lw_emergency_area_code'],
+				            'lw_registration_guardian_first_name'=>$_POST['form_a_lw_registration_guardian_first_name'],
+				            'lw_registration_guardian_last_name'=>$_POST['form_a_lw_registration_guardian_last_name'],
+				            'lw_registration_guardian_email'=>$_POST['form_a_lw_registration_guardian_email'],
+				            'lw_registration_guardian_mobile_phone'=>$_POST['form_a_lw_registration_guardian_mobile_phone'],
+				            'lw_contact_you'=>$_POST['form_a_lw_contact_you']
+				        )
+				    );
 				}
 				
 				if($lw_form_type=="form_b"){
 					$today_birtday = $_POST['form_b_lw_registration_birthday'];
 					
 					$updatedMetaData = array('lw_form_type'=>$_POST['lw_form_type'],
-											'lw_registration_birthday'=>$_POST['form_b_lw_registration_birthday'],
-											'lw_registration_pronouns'=>$_POST['form_b_lw_registration_pronouns']
-					);
+												'lw_registration_birthday'=>$_POST['form_b_lw_registration_birthday'],
+												'lw_registration_pronouns'=>$this->normalize_pronouns_input(isset($_POST['form_b_lw_registration_pronouns'])?$_POST['form_b_lw_registration_pronouns']:'')
+						);
 						
 				}
 						
@@ -76,24 +109,31 @@ if (!class_exists('LW_REGISTRATION_ADMIN_CLASS')) {
 					$today_birtday = $_POST['form_c_lw_registration_birthday'];
 					
 					$updatedMetaData = array('lw_form_type'=>$_POST['lw_form_type'],
-											'lw_registration_pronouns'=>$_POST['form_c_lw_registration_pronouns'],
-											'lw_registration_birthday'=>$_POST['form_c_lw_registration_birthday'],
-											'lw_sibling_spent_time'=>$_POST['form_c_lw_sibling_spent_time'],
-											'lw_emergency_area_code'=>$_POST['lw_emergency_area_code'],
-											'lw_area_code'=>$_POST['form_c_lw_area_code'],
-											'lw_mobilephone'=>$_POST['form_c_lw_mobilephone'],
-											'lw_registration_guardian_first_name'=>$_POST['form_c_lw_registration_guardian_first_name'],
-											'lw_registration_guardian_last_name'=>$_POST['form_c_lw_registration_guardian_last_name'],
-											'lw_registration_guardian_email'=>$_POST['form_c_lw_registration_guardian_email'],
-											'lw_registration_guardian_mobile_phone'=>$_POST['form_c_lw_registration_guardian_mobile_phone'],
-											'lw_contact_you'=>$_POST['form_c_lw_contact_you']
-					);
+												'lw_registration_pronouns'=>$this->normalize_pronouns_input(isset($_POST['form_c_lw_registration_pronouns'])?$_POST['form_c_lw_registration_pronouns']:''),
+												'lw_registration_birthday'=>$_POST['form_c_lw_registration_birthday'],
+												'lw_sibling_spent_time'=>$_POST['form_c_lw_sibling_spent_time'],
+												'lw_emergency_area_code'=>$_POST['lw_emergency_area_code'],
+												'lw_area_code'=>$_POST['form_c_lw_area_code'],
+												'lw_mobilephone'=>$_POST['form_c_lw_mobilephone'],
+												'lw_registration_guardian_first_name'=>$_POST['form_c_lw_registration_guardian_first_name'],
+												'lw_registration_guardian_last_name'=>$_POST['form_c_lw_registration_guardian_last_name'],
+												'lw_registration_guardian_email'=>$_POST['form_c_lw_registration_guardian_email'],
+												'lw_registration_guardian_mobile_phone'=>$_POST['form_c_lw_registration_guardian_mobile_phone'],
+												'lw_contact_you'=>$_POST['form_c_lw_contact_you']
+						);
 					
+				}
 	
-		}
-
 			foreach($updatedMetaData as $k=>$v){
 							update_user_meta($user_id,$k,$v);
+			}
+
+			if ( function_exists('xprofile_set_field_data') ) {
+				$pronouns_value    = isset($updatedMetaData['lw_registration_pronouns']) ? $updatedMetaData['lw_registration_pronouns'] : '';
+				$pronouns_field_id = function_exists('xprofile_get_field_id_from_name') ? xprofile_get_field_id_from_name('Pronouns') : 0;
+				if ( !empty($pronouns_field_id) ) {
+					xprofile_set_field_data( $pronouns_field_id, $user_id, $pronouns_value );
+				}
 			}
 		
 			$birthday_string = '';
@@ -153,19 +193,67 @@ if (!class_exists('LW_REGISTRATION_ADMIN_CLASS')) {
 				wp_enqueue_style( 'lw_registration_dataTables.bootstrap4.min-css', '//cdn.datatables.net/1.10.23/css/dataTables.bootstrap4.min.css');
 				wp_enqueue_style( 'lw_registration_all.min.css', '//cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 				
-				wp_register_style( 'select2css', '//cdnjs.cloudflare.com/ajax/libs/select2/3.4.8/select2.css', false, '1.0', 'all' );
-				wp_register_script( 'select2', '//cdnjs.cloudflare.com/ajax/libs/select2/3.4.8/select2.js', array( 'jquery' ), '1.0', true );
-				wp_enqueue_style( 'select2css' );
-				wp_enqueue_script( 'select2' );
+				add_action('admin_print_footer_scripts', 'lw_print_pronouns_select2_init');
 				
 				
-				wp_enqueue_script( 'lw_registration_jquery.validate.min', LW_REGISTRATION_ASSETS_URL . '/js/jquery.validate.min.js');
-				wp_enqueue_script( 'lw_registration_jquery.dataTables.min.js', '//cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js');
-				wp_enqueue_script( 'lw_registration_bootstrap.min.js', '//cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js');
-				wp_enqueue_script( 'lw_registration_dataTables.bootstrap5.min.js', '//cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js');
-				wp_enqueue_script( 'lw_registration_admin-js', LW_REGISTRATION_ASSETS_URL . '/js/lw_registration_admin.js');
-				wp_localize_script( 'lw_registration_admin-js', 'lw_registration', array("ajaxUrl"=>admin_url( 'admin-ajax.php' )) );
-		   }
+             }
+		   
+		   global $pagenow;
+           if (in_array($pagenow, array('user-edit.php','profile.php','user-new.php','users.php'), true)) {
+               $child_select2_css_nonmin = get_stylesheet_directory() . '/assets/css/select2.css';
+               $child_select2_css_min    = get_stylesheet_directory() . '/assets/css/select2.min.css';
+               $child_select2_js_nonmin  = get_stylesheet_directory() . '/assets/js/select2.js';
+               $child_select2_js_min     = get_stylesheet_directory() . '/assets/js/select2.min.js';
+               $select2_css_url = file_exists($child_select2_css_nonmin) ? get_stylesheet_directory_uri() . '/assets/css/select2.css'
+                                   : (file_exists($child_select2_css_min) ? get_stylesheet_directory_uri() . '/assets/css/select2.min.css'
+                                   : (file_exists(get_template_directory() . '/assets/css/vendors/select2.min.css') ? get_template_directory_uri() . '/assets/css/vendors/select2.min.css' : '//cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css'));
+               $select2_js_url  = file_exists($child_select2_js_nonmin) ? get_stylesheet_directory_uri() . '/assets/js/select2.js'
+                                   : ( file_exists($child_select2_js_min) ? get_stylesheet_directory_uri() . '/assets/js/select2.min.js'
+                                   : ( file_exists(get_template_directory() . '/assets/js/vendors/select2.full.min.js') ? get_template_directory_uri() . '/assets/js/vendors/select2.full.min.js' : '//cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js'));
+               $select2_css_path = file_exists( $child_select2_css_nonmin ) ? $child_select2_css_nonmin
+                                   : ( file_exists( $child_select2_css_min ) ? $child_select2_css_min
+                                   : ( file_exists(get_template_directory() . '/assets/css/vendors/select2.min.css') ? get_template_directory() . '/assets/css/vendors/select2.min.css' : '' ) );
+               $select2_js_path  = file_exists( $child_select2_js_nonmin ) ? $child_select2_js_nonmin
+                                   : ( file_exists( $child_select2_js_min ) ? $child_select2_js_min
+                                   : ( file_exists(get_template_directory() . '/assets/js/vendors/select2.full.min.js') ? get_template_directory() . '/assets/js/vendors/select2.full.min.js' : '' ) );
+               $select2_css_version = !empty($select2_css_path) && file_exists( $select2_css_path ) ? filemtime( $select2_css_path ) : '4.0.13';
+               $select2_js_version  = !empty($select2_js_path)  && file_exists( $select2_js_path )  ? filemtime( $select2_js_path )  : '4.0.13';
+               wp_register_style( 'lw-select2-css', $select2_css_url, array(), strval($select2_css_version), 'all' );
+wp_register_script( 'lw-select2', $select2_js_url, array( 'jquery' ), strval($select2_js_version), true );
+wp_enqueue_style( 'lw-select2-css' );
+wp_enqueue_script( 'lw-select2' );
+// Enqueue admin interaction script (input trigger and selection sync)
+wp_enqueue_script( 'lw-registration-admin-js', LW_REGISTRATION_ASSETS_URL . '/js/lw_registration_admin.js', array('jquery','lw-select2'), strval(filemtime(plugin_dir_path(__FILE__).'../../assets/js/lw_registration_admin.js')), true );
+// Hide native pronouns <select> and its Select2 container until JS finishes initialization to avoid flash
+wp_add_inline_style('lw-select2-css', 'select.lw-pronouns-select{opacity:0 !important; position:absolute !important; left:-9999px !important; width:1px !important; height:1px !important; pointer-events:none !important;} select.lw-pronouns-select + .select2-container{visibility:hidden !important;}');
+// Initialize Select2 for pronouns (kept existing behavior)
+wp_add_inline_script('lw-select2', "jQuery(function($){ if(!$.fn.select2){return;} function initPronouns(ctx){ var $sels=$(ctx).find('select.lw-pronouns-select'); $sels.each(function(){ var $el=$(this); if($el.data('select2')){return;} $el.select2({
+ placeholder: $el.attr('data-placeholder')||'Your Pronouns',
+ width:'100%',
+ closeOnSelect:true,
+ maximumSelectionLength:2,
+ dropdownParent: $(document.body),
+ sorter: function(data){
+     if(!Array.isArray(data)) return data;
+     var orderMap = { 'she':0, 'her':1, 'he':2, 'him':3, 'they':4, 'them':5 };
+     return data.slice().sort(function(a,b){
+         if(!a || !b) return 0;
+         var aid = (a.id!=null ? a.id : a.text!=null ? a.text : '');
+         var bid = (b.id!=null ? b.id : b.text!=null ? b.text : '');
+         aid = String(aid).toLowerCase();
+         bid = String(bid).toLowerCase();
+         var ai = orderMap.hasOwnProperty(aid) ? orderMap[aid] : 999;
+         var bi = orderMap.hasOwnProperty(bid) ? orderMap[bid] : 999;
+         return ai - bi;
+     });
+ }
+});
+ // Show the Select2 container once initialized
+ var $cont = $el.next('.select2, .select2-container');
+ if(!$cont.length){ try{ $cont = $el.select2('container'); }catch(e){} }
+ if($cont && $cont.length){ $cont.css('visibility','visible'); }
+}); } initPronouns(document); try{ var mo=new MutationObserver(function(muts){ muts.forEach(function(m){ if(m.addedNodes){ m.addedNodes.forEach(function(n){ if(n.nodeType===1){ initPronouns(n); } }); } }); }); mo.observe(document.body,{childList:true,subtree:true}); }catch(e){} $('#lw_form_type').on('change', function(){ setTimeout(function(){ initPronouns(document); }, 0); }); });");
+            }
 		}
 		public function lw_invitation_admin_action(){
 			parse_str($_POST['data'], $postData);
@@ -275,3 +363,7 @@ if (!class_exists('LW_REGISTRATION_ADMIN_CLASS')) {
 	
 }
 new LW_REGISTRATION_ADMIN_CLASS();
+
+function lw_print_pronouns_select2_init(){
+    echo '<script>jQuery(function($){ if(!$.fn.select2){return;} function initPronouns(ctx){ var $sels=$(ctx).find("select.lw-pronouns-select"); $sels.each(function(){ var $el=$(this); if($el.data("select2")){return;} $el.select2({ placeholder: $el.attr("data-placeholder")||"Your Pronouns", width:"100%", closeOnSelect:true, maximumSelectionLength:2, sorter: function(data){ var orderMap={she:0,her:1,he:2,him:3,they:4,them:5}; return data.sort(function(a,b){ var ai=orderMap[(a.id||a.text||"").toLowerCase()]; var bi=orderMap[(b.id||b.text||"").toLowerCase()]; if(typeof ai==="undefined") ai=999; if(typeof bi==="undefined") bi=999; return ai-bi; }); } }); }); } initPronouns(document); });</script>';
+}
